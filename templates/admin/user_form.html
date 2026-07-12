@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% if user %}Edit{% else %}Register{% endif %} User - Admin Area</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-light">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg glass-nav mb-4">
+        <div class="container">
+            <a class="navbar-brand college-brand" href="/dashboard">
+                <i class="fas fa-shield-alt text-primary me-2"></i> Pragati Admin
+            </a>
+            <div class="ms-auto d-flex align-items-center">
+                <span class="me-3 fw-medium">{{ current_user.username }}</span>
+                <a href="/admin/users" class="btn btn-outline-secondary btn-sm me-2"><i class="fas fa-users me-1"></i>Directory</a>
+                <a href="/logout" class="btn btn-primary-custom btn-sm"><i class="fas fa-sign-out-alt me-1"></i>Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="fw-bold mb-0" style="color: var(--primary-color);">
+                        {% if user %}Edit User: {{ user.username }}{% else %}Register New User{% endif %}
+                    </h2>
+                    <a href="{{ url_for('admin_users') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-arrow-left me-1"></i> Back
+                    </a>
+                </div>
+
+                <div class="glass-card p-4">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show">
+                                    {{ message }}
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="POST">
+                        <h5 class="fw-bold border-bottom pb-2 mb-3">Core Information</h5>
+                        
+                        <div class="row g-3 mb-4">
+                            <!-- Only allow changing role on creation, not editing -->
+                            <div class="col-md-{% if user %}12 d-none{% else %}12{% endif %}">
+                                <label class="form-label fw-bold">Primary Role <span class="text-danger">*</span></label>
+                                <select class="form-select bg-light border-0" name="role" id="roleSelect" required {% if user %}disabled{% endif %}>
+                                    <option value="" disabled selected>Select an account type...</option>
+                                    <option value="STUDENT" {% if user and user.role == 'STUDENT' %}selected{% endif %}>Student</option>
+                                    <option value="TEACHER" {% if user and user.role == 'TEACHER' %}selected{% endif %}>Teacher / Staff</option>
+                                    <option value="ADMIN" {% if user and user.role == 'ADMIN' %}selected{% endif %}>Administrator</option>
+                                </select>
+                                {% if user %}
+                                <input type="hidden" name="role" value="{{ user.role }}">
+                                {% endif %}
+                            </div>
+
+                            <div class="col-md-12">
+                                <label class="form-label fw-bold">Username <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control bg-light border-0" name="username" value="{{ user.username if user else '' }}" required>
+                            </div>
+                        </div>
+
+                        <h5 class="fw-bold border-bottom pb-2 mb-3 pt-2">Authentication</h5>
+                        <div class="mb-4">
+                            {% if user %}
+                                <label class="form-label fw-bold text-danger"><i class="fas fa-exclamation-triangle me-1"></i> Administrative Password Override</label>
+                                <input type="text" class="form-control border-danger" name="new_password" placeholder="Leave blank to keep existing password">
+                                <div class="form-text text-danger">Warning: Typing a password here will immediately overwrite the user's current password.</div>
+                            {% else %}
+                                <label class="form-label fw-bold">Initial Password <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control bg-light border-0" name="password" required>
+                                <div class="form-text">They can change this later via the "Forgot Password" link on the login page.</div>
+                            {% endif %}
+                        </div>
+
+                        <!-- STUDENT SPECIFIC FIELDS -->
+                        <div id="studentFields" class="d-none bg-primary bg-opacity-10 p-3 rounded mb-4 border border-primary border-opacity-25">
+                            <h6 class="fw-bold mb-3 text-primary"><i class="fas fa-user-graduate me-2"></i>Student Details</h6>
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Assigned Section <span class="text-danger">*</span></label>
+                                    <select class="form-select" name="section_id" id="studentSectionInput">
+                                        <option value="" disabled selected>Select a section...</option>
+                                        {% for sec in sections %}
+                                            <option value="{{ sec.id }}" {% if user and user.section_id == sec.id %}selected{% endif %}>{{ sec.display_name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- TEACHER SPECIFIC FIELDS -->
+                        <div id="teacherFields" class="d-none bg-success bg-opacity-10 p-3 rounded mb-4 border border-success border-opacity-25">
+                            <h6 class="fw-bold mb-3 text-success"><i class="fas fa-chalkboard-teacher me-2"></i>Teacher Permissions</h6>
+                            
+                            <div class="form-check form-switch mb-3">
+                                <input class="form-check-input" type="checkbox" role="switch" name="is_class_teacher" id="isClassTeacher" value="1" {% if user and user.is_class_teacher %}checked{% endif %}>
+                                <label class="form-check-label fw-medium text-success" for="isClassTeacher">Has Class Teacher (Admin) overrides for their sections</label>
+                            </div>
+
+                            <div class="row g-3">
+                                <div class="col-md-6">
+                                    <label class="form-label fw-medium">Authorized Subjects</label>
+                                    <div class="bg-white border rounded p-2" style="max-height: 150px; overflow-y: auto;">
+                                        {% for sub in subjects %}
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="subjects" value="{{ sub.id }}" id="sub_{{ sub.id }}"
+                                                {% if user and sub in user.subjects_taught %}checked{% endif %}>
+                                                <label class="form-check-label small" for="sub_{{ sub.id }}">{{ sub.name }}</label>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                    <div class="form-text small">Subjects they are allowed to grade.</div>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <label class="form-label fw-medium">Authorized Sections</label>
+                                    <div class="bg-white border rounded p-2" style="max-height: 150px; overflow-y: auto;">
+                                        {% for sec in sections %}
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="sections" value="{{ sec.id }}" id="sec_{{ sec.id }}"
+                                                {% if user and sec in user.sections_taught %}checked{% endif %}>
+                                                <label class="form-check-label small" for="sec_{{ sec.id }}">{{ sec.display_name }}</label>
+                                            </div>
+                                        {% endfor %}
+                                    </div>
+                                    <div class="form-text small">Sections they are allowed to access.</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="text-end pt-3 border-top">
+                            <button type="submit" class="btn btn-primary-custom px-5">
+                                <i class="fas fa-save me-2"></i> {% if user %}Save Changes{% else %}Register User{% endif %}
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Dynamic Form Logic -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const roleSelect = document.getElementById('roleSelect');
+            const studentFields = document.getElementById('studentFields');
+            const teacherFields = document.getElementById('teacherFields');
+            const studentSectionInput = document.getElementById('studentSectionInput');
+
+            // Handle pre-filled logic for Edit mode where roleSelect might be omitted/disabled
+            const currentRole = "{% if user %}{{ user.role }}{% else %}{% endif %}";
+            
+            function toggleFields(role) {
+                if (role === 'STUDENT') {
+                    studentFields.classList.remove('d-none');
+                    teacherFields.classList.add('d-none');
+                    studentSectionInput.setAttribute('required', 'required');
+                } else if (role === 'TEACHER') {
+                    studentFields.classList.add('d-none');
+                    teacherFields.classList.remove('d-none');
+                    studentSectionInput.removeAttribute('required');
+                } else {
+                    // ADMIN or None
+                    studentFields.classList.add('d-none');
+                    teacherFields.classList.add('d-none');
+                    studentSectionInput.removeAttribute('required');
+                }
+            }
+
+            if (roleSelect) {
+                roleSelect.addEventListener('change', function() {
+                    toggleFields(this.value);
+                });
+            }
+
+            // Initialize on load for edits
+            if (currentRole) toggleFields(currentRole);
+        });
+    </script>
+</body>
+</html>

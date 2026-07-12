@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Site Settings - Admin Area</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-light">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg glass-nav mb-4">
+        <div class="container">
+            <a class="navbar-brand college-brand" href="/dashboard">
+                <img src="{{ settings.logo_path }}" alt="Logo" width="30" height="30" class="d-inline-block align-text-top me-2">
+                {{ settings.college_name }}
+            </a>
+            <div class="ms-auto d-flex align-items-center">
+                <span class="me-3 fw-medium">{{ current_user.username }} (ADMIN)</span>
+                <a href="/dashboard" class="btn btn-outline-secondary btn-sm me-2"><i class="fas fa-home me-1"></i>Dashboard</a>
+                <a href="/logout" class="btn btn-primary-custom btn-sm"><i class="fas fa-sign-out-alt me-1"></i>Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="fw-bold mb-0" style="color: var(--primary-color);">Site Configuration</h2>
+                </div>
+
+                <div class="glass-card p-4">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show">
+                                    {{ message }}
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="POST" enctype="multipart/form-data">
+                        <h5 class="fw-bold mb-3 border-bottom pb-2">Text Content</h5>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">College Name</label>
+                            <input type="text" class="form-control" name="college_name" value="{{ settings.college_name }}" required>
+                            <div class="form-text">This will appear in the navigation bar and on the login page.</div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Welcome Subtitle</label>
+                            <input type="text" class="form-control" name="welcome_text" value="{{ settings.welcome_text }}">
+                            <div class="form-text">Subtitle text displayed above the login card.</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Attendance Alert Threshold (%)</label>
+                            <input type="number" class="form-control" name="attendance_threshold" value="{{ settings.attendance_threshold }}" min="0" max="100" required>
+                            <div class="form-text">Students with attendance below this percentage will be highlighted.</div>
+                        </div>
+
+                        <h5 class="fw-bold mb-3 border-bottom pb-2 pt-2">Branding Images</h5>
+                        
+                        <div class="mb-3">
+                            <label class="form-label fw-bold">College Logo</label>
+                            <div class="d-flex align-items-center mb-2">
+                                <img src="{{ settings.logo_path }}" alt="Current Logo" class="me-3 border rounded p-1 bg-white" style="width: 50px; height: 50px; object-fit: contain;">
+                                <input type="file" class="form-control" name="logo_image" accept="image/*">
+                            </div>
+                            <div class="form-text">Appears in navbars. Transparent PNG recommended.</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Login Page Hero Image</label>
+                            <div class="d-flex align-items-center mb-2">
+                                {% if settings.hero_image_path %}
+                                    <img src="{{ settings.hero_image_path }}" alt="Current Hero" class="me-3 border rounded p-1 bg-white" style="width: 100px; height: 60px; object-fit: cover;">
+                                {% else %}
+                                    <div class="me-3 border rounded bg-light text-center" style="width: 100px; height: 60px; line-height: 60px; font-size: 0.8em; color:#999;">No Image</div>
+                                {% endif %}
+                                <input type="file" class="form-control" name="hero_image" accept="image/*">
+                            </div>
+                            <div class="form-text">The large background photo on the left half of the login page (1920x1080 recommended).</div>
+                        </div>
+
+                        <div class="text-end pt-3 border-top">
+                            <button type="submit" class="btn btn-primary-custom px-5">
+                                <i class="fas fa-save me-2"></i> Save Configuration
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
