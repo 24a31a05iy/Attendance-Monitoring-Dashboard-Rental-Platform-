@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Set New Password - Pragati Engineering College</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .login-container {
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .login-card {
+            max-width: 450px;
+            width: 100%;
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <div class="login-container">
+        <div class="glass-card login-card p-5 shadow-lg">
+            <div class="text-center mb-4">
+                <h3 class="fw-bold college-brand mb-1">Set New Password</h3>
+                <p class="text-muted small">Please enter your new password below.</p>
+            </div>
+            
+            {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                    {% for category, message in messages %}
+                        <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} py-2 small">{{ message }}</div>
+                    {% endfor %}
+                {% endif %}
+            {% endwith %}
+            
+            <form method="POST" action="">
+                <div class="mb-3">
+                    <label class="form-label fw-medium text-muted small">New Password</label>
+                    <input type="password" class="form-control form-control-lg bg-light border-0" name="password" placeholder="••••••••" required>
+                </div>
+                <div class="mb-4">
+                    <label class="form-label fw-medium text-muted small">Confirm New Password</label>
+                    <input type="password" class="form-control form-control-lg bg-light border-0" name="confirm_password" placeholder="••••••••" required>
+                </div>
+                <button class="btn btn-primary-custom w-100 py-2 mb-3 fs-5">Reset Password</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

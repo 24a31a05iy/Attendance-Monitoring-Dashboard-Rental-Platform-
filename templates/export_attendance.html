@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Export Data - Pragati</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+<body class="bg-light">
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg glass-nav mb-4">
+        ... (same navbar structure, will just add Dashboard/Logout links) ...
+        <div class="container">
+            <a class="navbar-brand college-brand" href="/dashboard">
+                <i class="fas fa-shield-alt text-primary me-2"></i> Attendance Portal
+            </a>
+            <div class="ms-auto d-flex align-items-center">
+                <span class="me-3 fw-medium">{{ current_user.username }}</span>
+                <a href="/dashboard" class="btn btn-outline-secondary btn-sm me-2"><i class="fas fa-home me-1"></i>Dashboard</a>
+                <a href="/logout" class="btn btn-primary-custom btn-sm"><i class="fas fa-sign-out-alt me-1"></i>Logout</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-6">
+                <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h2 class="fw-bold mb-0" style="color: var(--primary-color);">Export Data to Excel</h2>
+                    <a href="{{ url_for('dashboard') }}" class="btn btn-outline-secondary btn-sm">
+                        <i class="fas fa-arrow-left me-1"></i> Back
+                    </a>
+                </div>
+
+                <div class="glass-card p-4">
+                    {% with messages = get_flashed_messages(with_categories=true) %}
+                        {% if messages %}
+                            {% for category, message in messages %}
+                                <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show shadow-sm">
+                                    {{ message }}
+                                </div>
+                            {% endfor %}
+                        {% endif %}
+                    {% endwith %}
+
+                    <form method="POST" id="exportForm">
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-bold small text-muted">Filter by Year (Optional)</label>
+                                <select class="form-select bg-light border-0" name="year" id="yearSelect">
+                                    <option value="">All Years</option>
+                                    {% for y in all_years %}
+                                    <option value="{{ y }}">{{ y }} Year</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                            <div class="col-md-6 mt-3 mt-md-0">
+                                <label class="form-label fw-bold small text-muted">Filter by Branch (Optional)</label>
+                                <select class="form-select bg-light border-0" name="branch" id="branchSelect">
+                                    <option value="">All Branches</option>
+                                    {% for b in all_branches %}
+                                    <option value="{{ b }}">{{ b }}</option>
+                                    {% endfor %}
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label fw-bold">Select Section (Optional)</label>
+                            <select class="form-select bg-light border-0" name="section_id" id="sectionSelect">
+                                <option value="">Export All Filtered Sections</option>
+                                {% for sec in sections %}
+                                    <option value="{{ sec.id }}">{{ sec.display_name }}</option>
+                                {% endfor %}
+                            </select>
+                            <small class="text-muted d-block mt-1">If no section is selected, all matching sections will be exported.</small>
+                        </div>
+                        
+                        <div class="mb-5">
+                            <label class="form-label fw-bold">Select Subject <span class="text-danger">*</span></label>
+                            <select class="form-select bg-light border-0" name="subject_id" required>
+                                <option value="" disabled selected>Select a subject...</option>
+                                {% for sub in subjects %}
+                                    <option value="{{ sub.id }}">{{ sub.name }} ({{ sub.code }})</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="text-end border-top pt-3">
+                            <button type="submit" class="btn btn-success px-5 w-100">
+                                <i class="fas fa-file-excel me-2"></i> Download Excel Sheet
+                            </button>
+                        </div>
+                    </form>
+                    
+                    <script>
+                        const sectionsData = [
+                            {% for s in sections %}
+                            { id: {{ s.id }}, year: {{ s.year }}, branch: "{{ s.branch }}", name: "{{ s.display_name }}" }{{ "," if not loop.last }}
+                            {% endfor %}
+                        ];
+                        
+                        const yearSelect = document.getElementById('yearSelect');
+                        const branchSelect = document.getElementById('branchSelect');
+                        const sectionSelect = document.getElementById('sectionSelect');
+                        
+                        function updateBranches() {
+                            const year = yearSelect.value;
+                            const availableBranches = new Set();
+                            
+                            sectionsData.forEach(s => {
+                                if (!year || s.year.toString() === year) {
+                                    availableBranches.add(s.branch);
+                                }
+                            });
+                            
+                            branchSelect.innerHTML = '<option value="">All Branches</option>';
+                            Array.from(availableBranches).sort().forEach(b => {
+                                const opt = document.createElement('option');
+                                opt.value = b;
+                                opt.textContent = b;
+                                branchSelect.appendChild(opt);
+                            });
+                            
+                            updateSections();
+                        }
+                        
+                        function updateSections() {
+                            const year = yearSelect.value;
+                            const branch = branchSelect.value;
+                            
+                            sectionSelect.innerHTML = '<option value="">Export All Filtered Sections</option>';
+                            sectionsData.forEach(s => {
+                                const matchYear = !year || s.year.toString() === year;
+                                const matchBranch = !branch || s.branch === branch;
+                                
+                                if (matchYear && matchBranch) {
+                                    const opt = document.createElement('option');
+                                    opt.value = s.id;
+                                    opt.textContent = s.name;
+                                    sectionSelect.appendChild(opt);
+                                }
+                            });
+                        }
+                        
+                        yearSelect.addEventListener('change', updateBranches);
+                        branchSelect.addEventListener('change', updateSections);
+                    </script>
+                </div>
+                
+                <div class="mt-4 text-center text-muted small">
+                    <p><i class="fas fa-info-circle me-1"></i> Dates will be automatically formatted as columns.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

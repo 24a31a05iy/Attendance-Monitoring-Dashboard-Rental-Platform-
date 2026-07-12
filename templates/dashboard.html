@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Dashboard - Pragati Engineering College</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg glass-nav mb-4">
+        <div class="container">
+            <a class="navbar-brand college-brand" href="/dashboard">
+                <img src="https://cdn-icons-png.flaticon.com/512/3228/3228913.png" alt="Logo" width="30" height="30" class="d-inline-block align-text-top me-2">
+                Pragati Engineering College
+            </a>
+            <div class="ms-auto d-flex align-items-center">
+                <span class="me-3 fw-medium" style="color: var(--text-color);">Hello, {{ current_user.username }} ({{ current_user.role }})</span>
+                {% if current_user.role in ['TEACHER', 'ADMIN'] %}
+                    <a href="/take_attendance" class="btn btn-outline-primary me-2 fw-medium">Take Attendance</a>
+                {% endif %}
+                <a href="/logout" class="btn btn-primary-custom">Logout</a>
+            </div>
+        </div>
+    </nav>
+    
+    <div class="container pt-3">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show">
+                        {{ message }}
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <div class="row mb-5">
+            <div class="col-12 d-flex justify-content-between align-items-center">
+                <div>
+                    <h2 class="fw-bold mb-1" style="color: var(--primary-color);">Overview</h2>
+                    <p class="text-muted mb-0">Welcome back to your comprehensive attendance dashboard.</p>
+                </div>
+                
+                <div class="d-flex flex-column align-items-end gap-2">
+                    {% if current_user.role == 'ADMIN' %}
+                    <div class="d-flex gap-2">
+                        <a href="/admin/users" class="btn btn-primary-custom px-4 shadow-sm">
+                            <i class="fas fa-users me-2"></i> Manage Users
+                        </a>
+                        <a href="/admin/sections" class="btn btn-primary-custom px-4 shadow-sm">
+                            <i class="fas fa-chalkboard-teacher me-2"></i> Manage Classes
+                        </a>
+                        <a href="/admin/subjects" class="btn btn-primary-custom px-4 shadow-sm">
+                            <i class="fas fa-book me-2"></i> Manage Subjects
+                        </a>
+                        <a href="/admin/settings" class="btn btn-outline-secondary px-4 shadow-sm bg-white">
+                            <i class="fas fa-cog me-2"></i> Site Settings
+                        </a>
+                    </div>
+                    {% endif %}
+                    {% if current_user.role in ['TEACHER', 'ADMIN'] %}
+                    <div class="d-flex gap-2">
+                        <a href="/attendance/report" class="btn btn-info text-white px-4 shadow-sm">
+                            <i class="fas fa-chart-pie me-2"></i> Daily Report
+                        </a>
+                        <a href="/attendance/export" class="btn btn-success px-4 shadow-sm">
+                            <i class="fas fa-file-excel me-2"></i> Export Data
+                        </a>
+                        <a href="{{ url_for('irregular_students') }}" class="btn btn-warning px-4 shadow-sm">
+                            <i class="fas fa-exclamation-triangle me-2"></i> Irregular Students
+                        </a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- NEW NOTIFICATIONS BLOCK -->
+        {% if current_user.role in ['TEACHER', 'ADMIN'] and low_attendance_students %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="alert alert-warning border-0 shadow-sm border-start border-4 border-warning">
+                    <h5 class="fw-bold mb-3"><i class="fas fa-exclamation-triangle me-2 text-warning"></i> Low Attendance Alerts (< {{ threshold }}%)</h5>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for item in low_attendance_students %}
+                        <a href="{{ url_for('view_student', student_id=item.student.id) }}" class="btn btn-sm btn-light border text-danger fw-bold">
+                            {{ item.student.username }} <span class="badge bg-danger ms-1">{{ item.pct }}%</span>
+                        </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if current_user.role == 'STUDENT' and unread_messages %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="glass-card border-0 shadow-sm border-start border-4 border-info p-4">
+                    <h5 class="fw-bold mb-3 text-info"><i class="fas fa-envelope me-2"></i> Unread Messages</h5>
+                    <div class="list-group list-group-flush gap-2">
+                        {% for msg in unread_messages %}
+                        <div class="list-group-item bg-light border-0 rounded p-3">
+                            <div class="d-flex w-100 justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0 fw-bold">From: {{ msg.sender.username }} <span class="badge bg-secondary ms-2">{{ msg.sender.role }}</span></h6>
+                                <small class="text-muted">{{ msg.timestamp.strftime('%b %d, %Y %H:%M') }}</small>
+                            </div>
+                            <p class="mb-3 text-dark">{{ msg.content }}</p>
+                            <form method="POST" action="{{ url_for('read_message', message_id=msg.id) }}" class="text-end">
+                                <button type="submit" class="btn btn-sm btn-info text-white fw-bold px-3">Mark as Read</button>
+                            </form>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="row g-4">
+            <!-- Attendance Chart -->
+            <div class="col-lg-4">
+                <div class="glass-card h-100 p-4 d-flex flex-column">
+                    <h5 class="fw-bold mb-4" style="color: var(--primary-color);">Attendance Summary</h5>
+                    <div class="flex-grow-1 d-flex justify-content-center align-items-center" style="position: relative; min-height: 250px;">
+                        <canvas id="chart"></canvas>
+                    </div>
+                    
+                    {% if current_user.role == 'STUDENT' %}
+                    <div class="mt-4 text-center">
+                        <form method="GET" class="mb-4">
+                            <select name="subject_id" class="form-select form-select-sm" onchange="this.form.submit()">
+                                <option value="">All Subjects</option>
+                                {% for sub in subjects %}
+                                <option value="{{ sub.id }}" {% if selected_subject_id == sub.id|string %}selected{% endif %}>{{ sub.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </form>
+                        <h3 class="fw-bold mb-0" style="color: {% if chart_data.is_low %}var(--bs-danger){% else %}var(--text-color){% endif %};">{{ chart_data.pct }}%</h3>
+                        <p class="text-muted small">{% if selected_subject_id %}Subject{% else %}Overall{% endif %} Attendance</p>
+                        <div class="d-flex justify-content-around mt-3">
+                            <div class="text-center">
+                                <span class="d-block text-success fw-bold fs-5">{{ chart_data.present }}</span>
+                                <span class="text-muted small">Present</span>
+                            </div>
+                            <div class="text-center">
+                                <span class="d-block text-danger fw-bold fs-5">{{ chart_data.total - chart_data.present }}</span>
+                                <span class="text-muted small">Absent</span>
+                            </div>
+                        </div>
+                    </div>
+                    {% else %}
+                    <div class="mt-4 text-center">
+                        <p class="text-muted small">Aggregate view of student attendance trends.</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <!-- Recent Records -->
+            <div class="col-lg-8">
+                <div class="glass-card h-100 p-4">
+                    <h5 class="fw-bold mb-4" style="color: var(--primary-color);">Recent Attendance Records</h5>
+                    
+                    <div class="table-responsive">
+                        <table class="table glass-table table-hover align-middle">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Class Section</th>
+                                    {% if current_user.role in ['TEACHER', 'ADMIN'] %}
+                                    <th>Student ID</th>
+                                    {% endif %}
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for att in attendances[-10:]|reverse %}
+                                <tr>
+                                    <td class="fw-medium text-muted">{{ att.date.strftime('%b %d, %Y') if att.date else att.date }}</td>
+                                    <td class="fw-bold">{{ att.subject.name }}</td>
+                                    {% if current_user.role in ['TEACHER', 'ADMIN'] %}
+                                    <td>
+                                        <a href="{{ url_for('view_student', student_id=att.student_id) }}" class="text-decoration-none fw-bold">#{{ att.student_id }}</a>
+                                        <span class="text-muted small">({{ att.subject.code }})</span>
+                                    </td>
+                                    {% endif %}
+                                    <td>
+                                        <span class="status-badge badge-{{ 'present' if att.status=='PRESENT' else 'absent' }}">
+                                            {{ att.status }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% else %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted">No recent records available.</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Init ChartJS -->
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const ctx = document.getElementById('chart').getContext('2d');
+            
+            // Apply Chart Defaults for Modern look
+            Chart.defaults.font.family = "'Inter', sans-serif";
+            Chart.defaults.color = '#64748b';
+            
+            new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Present', 'Absent'],
+                    datasets: [{
+                        data: [{{ chart_data.present }}, {{ chart_data.total - chart_data.present }}],
+                        backgroundColor: [
+                            {% if current_user.role == 'STUDENT' and chart_data.is_low %}'rgba(220, 53, 69, 0.8)'{% else %}'rgba(40, 167, 69, 0.8)'{% endif %},
+                            {% if current_user.role == 'STUDENT' and chart_data.is_low %}'rgba(220, 53, 69, 0.2)'{% else %}'rgba(220, 53, 69, 0.8)'{% endif %}
+                        ],
+                        borderColor: [
+                            {% if current_user.role == 'STUDENT' and chart_data.is_low %}'#dc3545'{% else %}'#28a745'{% endif %},
+                            '#dc3545'
+                        ],
+                        borderWidth: 1,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    cutout: '75%',
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                            labels: {
+                                padding: 20,
+                                usePointStyle: true,
+                                boxWidth: 8
+                            }
+                        }
+                    },
+                    animation: {
+                        animateScale: true,
+                        animateRotate: true
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>
